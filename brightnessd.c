@@ -9,9 +9,9 @@
 
 #define FIFO_PATH   "/tmp/brightnessd-fifo"
 #define BRIGHT_FILE	"/sys/class/backlight/radeon_bl0/brightness"
-#define DELAY		1*5
+#define DELAY		5
 #define STEP		1
-#define BIG_STEP	5
+#define BIG_STEP	10
 
 
 void get_now();
@@ -19,12 +19,12 @@ void get_now();
 /****************************************************************
  * Write something useful here for once
  */
-volatile unsigned char target; // int because overflow checky checky woo yay blah
-volatile unsigned char now;
+int target; // int because overflow checky checky woo yay blah
+int now;
 FILE *f;
 
 
-unsigned char brightness_within_bounds(int bright, int lower, int upper)
+int brightness_within_bounds(int bright, int lower, int upper)
 {
 	// to do: make a horrible but funny ternary statement
 	if (bright < lower)
@@ -68,27 +68,21 @@ int main(int argc, char **argv)
 
 	while(1)
 	{
-		printf("polling, %d ====> %d\n", now, target);
 		poll(fds, 1, delay);
 		if (fds[0].revents & POLLIN)
 		{
-			printf("polling wooorked\n");
 			delay = DELAY;
 			read(fifo, buffer, sizeof(buffer));
-			printf("%s",buffer);
 			switch(buffer[0])
 			{
 				case '+':
-					printf("UP!\n");
 					target += BIG_STEP;
 					break;
 				case '-':
-					printf("DOWN\n");
 					target -= BIG_STEP;
 					break;
 				default:
 					target = atoi(buffer);
-					printf("FOO %d\n", target);
 					break;
 			}
 			target = brightness_within_bounds(target, 1, 255);
@@ -100,6 +94,7 @@ int main(int argc, char **argv)
 		else if (now == target)
 			delay = -1;
 
+		now = brightness_within_bounds(now, 1, 255);
 		fprintf(f, "%d\n", now);
 		rewind(f);
 	}
@@ -118,30 +113,4 @@ void get_now()
 	fgets(buffer, sizeof(buffer), f);
 
 	now = atoi(buffer);
-}
-
-void brightness_thread()
-{
-	char buffer[4096]; // to do: magic constant is icky
-
-	while(1)
-	{
-		// Wait for the target to be different from the current brightness
-		while (now == target)
-			usleep(DELAY*50);
-
-		// Adjust the brightness to match target
-		while(now != target)
-		{
-			if (now > target)
-				now -= STEP;
-
-			if (now < target)
-				now += STEP;
-
-			fprintf(f, "%d\n", now);
-			rewind(f);
-			usleep(DELAY);
-		}
-	}
 }
