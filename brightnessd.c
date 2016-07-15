@@ -23,7 +23,6 @@ int target; // int because overflow checky checky woo yay blah
 int now;
 FILE *f;
 
-
 int brightness_within_bounds(int bright, int lower, int upper)
 {
 	// to do: make a horrible but funny ternary statement
@@ -57,7 +56,6 @@ int main(int argc, char **argv)
 
 	// FIXME : check return val
 	int fifo = open(FIFO_PATH, O_RDWR);
-	FILE *fifo_k = fopen(FIFO_PATH, "w");
 
 	struct pollfd fds[1];
 
@@ -87,19 +85,21 @@ int main(int argc, char **argv)
 			}
 			target = brightness_within_bounds(target, 1, 255);
 		}
-		if (now < target)
+		if (now < target) {
 			now += STEP;
-		else if (now > target)
+			if (now > target)
+				now = target;
+		} else if (now > target) {
 			now -= STEP;
-		else if (now == target)
+			if (now < target)
+				now = target;
+		} else if (now == target) {
 			delay = -1;
-
-		now = brightness_within_bounds(now, 1, 255);
+		}
 		fprintf(f, "%d\n", now);
 		rewind(f);
 	}
 
-	// Do I need this?
 	close(fifo);
 	remove(FIFO_PATH);
 	return 0;
