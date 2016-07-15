@@ -13,19 +13,18 @@
 #define STEP		1
 #define BIG_STEP	10
 
+int get_now()
+{
+	char buffer[4096]; // FIXME: magic constant is icky
+	// FIXME: check return value for eror
+	fgets(buffer, sizeof(buffer), f);
 
-void get_now();
-
-/****************************************************************
- * Write something useful here for once
- */
-int target; // int because overflow checky checky woo yay blah
-int now;
-FILE *f;
+	return atoi(buffer);
+}
 
 int brightness_within_bounds(int bright, int lower, int upper)
 {
-	// to do: make a horrible but funny ternary statement
+	// FIXME: make a horrible but funny ternary statement
 	if (bright < lower)
 		return lower;
 
@@ -37,6 +36,9 @@ int brightness_within_bounds(int bright, int lower, int upper)
 
 int main(int argc, char **argv)
 {
+	int target = 0;
+	int now = 0;
+	FILE *f = NULL;
 	char buffer[4]; /* size 4 because max bright is 255, plus null terminator */
 
 	// Open brightness file
@@ -46,13 +48,12 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	get_now();
+	now = get_now();
 	target = now;
 
 	// Open a FIFO
 	remove(FIFO_PATH);
 	mkfifo(FIFO_PATH, 0666);
-	chmod(FIFO_PATH, 0666);
 
 	// FIXME : check return val
 	int fifo = open(FIFO_PATH, O_RDWR);
@@ -106,11 +107,3 @@ int main(int argc, char **argv)
 }
 
 
-void get_now()
-{
-	char buffer[4096]; // to do: magic constant is icky
-	// to do check return value for eror
-	fgets(buffer, sizeof(buffer), f);
-
-	now = atoi(buffer);
-}
