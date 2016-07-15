@@ -13,7 +13,7 @@
 #define STEP		1
 #define BIG_STEP	10
 
-int get_now()
+int get_now(FILE *f)
 {
 	char buffer[4096]; // FIXME: magic constant is icky
 	// FIXME: check return value for eror
@@ -48,7 +48,7 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
-	now = get_now();
+	now = get_now(f);
 	target = now;
 
 	// Open a FIFO
