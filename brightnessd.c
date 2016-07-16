@@ -54,6 +54,7 @@ int main(int argc, char **argv)
 	// Open a FIFO
 	remove(FIFO_PATH);
 	mkfifo(FIFO_PATH, 0666);
+	chmod(FIFO_PATH, 0666);
 
 	// FIXME : check return val
 	int fifo = open(FIFO_PATH, O_RDWR);
