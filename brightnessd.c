@@ -15,8 +15,8 @@
 
 int get_now(FILE *f)
 {
-	char buffer[4096]; // FIXME: magic constant is icky
-	// FIXME: check return value for eror
+	char buffer[4096]; /* FIXME: magic constant is icky */
+	/* FIXME: check return value for error */
 	fgets(buffer, sizeof(buffer), f);
 
 	return atoi(buffer);
@@ -24,7 +24,7 @@ int get_now(FILE *f)
 
 int brightness_within_bounds(int bright, int lower, int upper)
 {
-	// FIXME: make a horrible but funny ternary statement
+	/* FIXME: make a horrible but funny ternary statement */
 	if (bright < lower)
 		return lower;
 
@@ -41,7 +41,7 @@ int main(int argc, char **argv)
 	FILE *f = NULL;
 	char buffer[4]; /* size 4 because max bright is 255, plus null terminator */
 
-	// Open brightness file
+	/* Open brightness file */
 	if ((f = fopen(BRIGHT_FILE, "w+")) == NULL)
 	{
 		perror("fopen");
@@ -51,12 +51,12 @@ int main(int argc, char **argv)
 	now = get_now(f);
 	target = now;
 
-	// Open a FIFO
+	/* create and open a FIFO */
 	remove(FIFO_PATH);
 	mkfifo(FIFO_PATH, 0666);
 	chmod(FIFO_PATH, 0666);
 
-	// FIXME : check return val
+	/* FIXME : check return val */
 	int fifo = open(FIFO_PATH, O_RDWR);
 
 	struct pollfd fds[1];
