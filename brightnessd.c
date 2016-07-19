@@ -14,62 +14,41 @@
 #define STEP		1
 #define BIG_STEP	10
 #define USER        "nobody"
+#define BRIGHT_BUFFER_SIZE 4
+#define DELAY_INFINITE (-1)
 
-int get_now(FILE *f)
+/**
+ * create and open fifo, using chmod since mkfifo is affected by umask
+ */
+int setup_fifo()
 {
-	char buffer[4096]; /* FIXME: magic constant is icky */
-	/* FIXME: check return value for error */
-	fgets(buffer, sizeof(buffer), f);
-
-	return atoi(buffer);
-}
-
-int brightness_within_bounds(int bright, int lower, int upper)
-{
-	/* FIXME: make a horrible but funny ternary statement */
-	if (bright < lower)
-		return lower;
-
-	if (bright > upper)
-		return upper;
-
-	return bright;
-}
-
-int main(int argc, char **argv)
-{
-	int target = 0;
-	int now = 0;
-	FILE *f = NULL;
-	int fifo = 0;
-	struct pollfd fds;
-	struct passwd *p;
-	int delay = 0;
-	int nread = 0;
-	char buffer[4]; /* size 4 because max bright is 255, plus null terminator */
-
-	/* Open brightness file */
-	if ((f = fopen(BRIGHT_FILE, "w+")) == NULL)
+	struct stat st;
+	if (stat(FIFO_PATH, &st) == 0)
 	{
-		perror("fopen");
-		exit(EXIT_FAILURE);
+		if (remove(FIFO_PATH))
+		{
+			perror("remove("FIFO_PATH")");
+			return 1;
+		}
 	}
+	if (mkfifo(FIFO_PATH, 0666))
+	{
+		perror("mkfifo");
+		return 1;
+	}
+	if (chmod(FIFO_PATH, 0666))
+	{
+		perror("chmod");
+		return 1;
+	}
+	return 0;
+}
 
-	now = get_now(f);
-	target = now;
+int drop_priv()
+{
+	struct passwd *p = NULL;
 
-	/* create and open fifo, using chmod since mkfifo is affected by umask */
-	remove(FIFO_PATH);
-	mkfifo(FIFO_PATH, 0666);
-	chmod(FIFO_PATH, 0666);
-
-	/* FIXME : check return val */
-	fifo = open(FIFO_PATH, O_RDWR);
-
-
-	fds.fd = fifo;
-	fds.events = POLLIN;
-
+	/* get group (and more) of USER */
 	p = getpwnam(USER);
 
 	if (p == NULL)
@@ -97,8 +76,70 @@ int main(int argc, char **argv)
 		fprintf(stderr, "Got uid 0 or gid 0 back after dropping, bailing\n");
 		return 1;
 	}
+	return 0;
+}
 
-	delay = -1;
+int get_now(FILE *f)
+{
+	char buffer[BRIGHT_BUFFER_SIZE]; /* FIXME: magic constant is icky */
+	/* FIXME: check return value for error */
+	fgets(buffer, sizeof(buffer), f);
+
+	return atoi(buffer);
+}
+
+int brightness_within_bounds(int bright, int lower, int upper)
+{
+	/* FIXME: make a horrible but funny ternary statement */
+	if (bright < lower)
+		return lower;
+
+	if (bright > upper)
+		return upper;
+
+	return bright;
+}
+
+int main(int argc, char **argv)
+{
+	int target = 0;
+	int now = 0;
+	FILE *f = NULL;
+	int fifo = 0;
+	struct pollfd fds;
+	int delay = 0;
+	int nread = 0;
+	char buffer[BRIGHT_BUFFER_SIZE];
+
+	/* Open brightness file */
+	if ((f = fopen(BRIGHT_FILE, "w+")) == NULL)
+	{
+		perror("fopen");
+		exit(EXIT_FAILURE);
+	}
+
+	if (setup_fifo())
+	{
+		fclose(f);
+		return 1;
+	}
+
+	if (drop_priv() != 0)
+	{
+		fclose(f);
+		return 1;
+	}
+
+	now = get_now(f);
+	target = now;
+
+	/* FIXME : check return val */
+	fifo = open(FIFO_PATH, O_RDWR);
+
+	fds.fd = fifo;
+	fds.events = POLLIN;
+
+	delay = DELAY_INFINITE;
 	while(1)
 	{
 		poll(&fds, 1, delay);
@@ -131,7 +172,7 @@ int main(int argc, char **argv)
 			if (now < target)
 				now = target;
 		} else if (now == target) {
-			delay = -1;
+			delay = DELAY_INFINITE;
 		}
 		fprintf(f, "%d\n", now);
 		rewind(f);
