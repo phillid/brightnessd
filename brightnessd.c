@@ -23,21 +23,17 @@
 int setup_fifo()
 {
 	struct stat st;
-	if (stat(FIFO_PATH, &st) == 0)
-	{
-		if (remove(FIFO_PATH))
-		{
+	if (stat(FIFO_PATH, &st) == 0) {
+		if (remove(FIFO_PATH)) {
 			perror("remove("FIFO_PATH")");
 			return 1;
 		}
 	}
-	if (mkfifo(FIFO_PATH, 0666))
-	{
+	if (mkfifo(FIFO_PATH, 0666)) {
 		perror("mkfifo");
 		return 1;
 	}
-	if (chmod(FIFO_PATH, 0666))
-	{
+	if (chmod(FIFO_PATH, 0666)) {
 		perror("chmod");
 		return 1;
 	}
@@ -51,14 +47,12 @@ int drop_priv()
 	/* get group (and more) of USER */
 	p = getpwnam(USER);
 
-	if (p == NULL)
-	{
+	if (p == NULL) {
 		fprintf(stderr, "Failed to get uid and gid of user \""USER"\", bailing\n");
 		return 1;
 	}
 
-	if (setgid(p->pw_gid))
-	{
+	if (setgid(p->pw_gid)) {
 		fprintf(stderr, "Failed to set gid to %d\n", p->pw_gid);
 		perror("setuid");
 		return 1;
@@ -71,8 +65,7 @@ int drop_priv()
 		return 1;
 	}
 
-	if (!setuid(0) || !setgid(0))
-	{
+	if (!setuid(0) || !setgid(0)) {
 		fprintf(stderr, "Got uid 0 or gid 0 back after dropping, bailing\n");
 		return 1;
 	}
@@ -112,20 +105,17 @@ int main(int argc, char **argv)
 	char buffer[BRIGHT_BUFFER_SIZE];
 
 	/* Open brightness file */
-	if ((f = fopen(BRIGHT_FILE, "w+")) == NULL)
-	{
+	if ((f = fopen(BRIGHT_FILE, "w+")) == NULL) {
 		perror("fopen");
 		exit(EXIT_FAILURE);
 	}
 
-	if (setup_fifo())
-	{
+	if (setup_fifo()) {
 		fclose(f);
 		return 1;
 	}
 
-	if (drop_priv() != 0)
-	{
+	if (drop_priv() != 0) {
 		fclose(f);
 		return 1;
 	}
@@ -140,26 +130,23 @@ int main(int argc, char **argv)
 	fds.events = POLLIN;
 
 	delay = DELAY_INFINITE;
-	while(1)
-	{
+	while(1) {
 		poll(&fds, 1, delay);
-		if (fds.revents & POLLIN)
-		{
+		if (fds.revents & POLLIN) {
 			delay = DELAY;
 			nread = read(fifo, buffer, sizeof(buffer));
 			if (nread == 0)
 				perror("read");
-			switch(buffer[0])
-			{
-				case '+':
-					target += BIG_STEP;
-					break;
-				case '-':
-					target -= BIG_STEP;
-					break;
-				default:
-					target = atoi(buffer);
-					break;
+			switch(buffer[0]) {
+			case '+':
+				target += BIG_STEP;
+				break;
+			case '-':
+				target -= BIG_STEP;
+				break;
+			default:
+				target = atoi(buffer);
+				break;
 			}
 			target = brightness_within_bounds(target, 1, 255);
 		}
